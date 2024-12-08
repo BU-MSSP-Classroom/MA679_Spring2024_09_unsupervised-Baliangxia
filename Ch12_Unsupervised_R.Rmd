@@ -124,8 +124,24 @@ Pokemon<-fread("Pokemon.csv")
 Do EDA and find patterns in the data. Notice that this data is multivariate, with some clear dependency in the variables. Does the result make sense?  
 
 ```{r}
-#
-#
+str(Pokemon)
+
+summary(Pokemon)
+
+ggplot(Pokemon, aes(x = HP)) +
+  geom_histogram(binwidth = 5, fill = "skyblue", color = "black") +
+  labs(title = "Distribution of HP",
+       x = "HP",
+       y = "Frequency")
+
+ggplot(Pokemon, aes(x = Attack)) +
+  geom_histogram(binwidth = 5, fill = "skyblue", color = "black") +
+  labs(title = "Distribution of Attack",
+       x = "Attack",
+       y = "Frequency")
+
+correlation_matrix <- cor(Pokemon[, c("HP", "Attack", "Defense", "Sp. Atk", "Sp. Def", "Speed")])
+corrplot(correlation_matrix, method = "color", type = "upper", tl.cex = 0.7, tl.col = "black")
 ```
 
 Comment of the result:
@@ -139,23 +155,38 @@ Please write your answer in full sentences.
 Your task is to group the Pokemon into some meaningful clusters that makes sense to you and have a discussion with your neighbor on why your clusters make the most sense. How many cluster seems appropriate?
 
 ```{r}
-#
-#
+Pokemon_stats <- Pokemon[, c("HP", "Attack", "Defense",  "Sp. Atk", "Sp. Def", "Speed")]
+
+scaled_stats <- scale(Pokemon_stats)
+
+set.seed(123) 
+kmeans_result <- kmeans(scaled_stats, centers = 5)
+
+Pokemon$cluster <- as.factor(kmeans_result$cluster)
+
+table(Pokemon$cluster)
+
 ```
 
 Comment of the result:
 
 ~~~
-Please write your answer in full sentences.
-
+Cluster 1: This cluster may include Pokemon with high HP and defensive stats but lower offensive stats. 
+Cluster 2: This cluster may consist of fast and offensive Pokemon with relatively low defensive stats. 
+Cluster 3: This cluster could represent well-rounded Pokemon with balanced stats across HP, attack, defense, and special stats. 
+Cluster 4: This cluster may include Pokemon with high offensive stats, particularly in special attack and speed, but lower defensive capabilities. 
+Cluster 5: This cluster could represent defensive-oriented Pokemon with high defensive stats but lower offensive capabilities. 
 
 ~~~
 
 Look at your cluster and see if you can identify a monster that does not seem to fit with the other monsters. Why do you think that might be?  If you want to know more about these Pokemons you can do a deeper dive by looking through the [database](https://pokemondb.net/pokedex/all).
 
 ```{r}
-#
-#
+for (i in 1:max(kmeans_result$cluster)) {
+  cat("Cluster", i, ":\n")
+  print(Pokemon[Pokemon$cluster == i, c("#", "Name")])
+  cat("\n")
+}
 ```
 
 Comment of the result:
@@ -174,7 +205,7 @@ https://www.kaggle.com/datasets/zalando-research/fashionmnist
 Each image is 28 pixels in height and 28 pixels in width, for a total of 784 pixels. Each pixel has a single pixel-value associated with it, indicating the lightness or darkness of that pixel, with higher numbers meaning darker. This pixel-value is an integer between 0 and 255. The training and test data sets have 785 columns. The first column consists of the class labels (see above), representing the clothing article. The rest of the columns contain the pixel-values of the associated image.
 
 ```{r}
-fm<-fread("fashion-mnist_train.csv")
+fm<-fread("fashion-mnist_train_sub.csv")
 ```
 
 - Each row in the data is a separate image.
@@ -237,8 +268,14 @@ Consider the `USArrests` data. We will now perform hierarchical clustering on th
 
 Your code:
 ```{r,echo=TRUE}
-#
-#
+library(datasets)
+
+data("USArrests")
+
+hc_complete <- hclust(dist(USArrests), method = "complete")
+
+plot(hc_complete, main = "Hierarchical Clustering of US States (Complete Linkage, Euclidean Distance)", xlab = "States", ylab = "Distance")
+
 ```
 
 Your answer:
@@ -253,8 +290,12 @@ Please write your answer in full sentences.
 
 Your code:
 ```{r,echo=TRUE}
-#
-#
+clusters <- cutree(hc_complete, k = 3)
+
+table(clusters)
+
+cluster_membership <- data.frame(State = row.names(USArrests), Cluster = clusters)
+cluster_membership
 ```
 
 Your answer:
@@ -269,8 +310,11 @@ Please write your answer in full sentences.
 
 Your code:
 ```{r,echo=TRUE}
-#
-#
+scaled_data <- scale(USArrests)
+
+hc_complete_scaled <- hclust(dist(scaled_data), method = "complete")
+
+plot(hc_complete_scaled, main = "Hierarchical Clustering of US States (Complete Linkage, Scaled Data)", xlab = "States", ylab = "Distance")
 ```
 
 Your answer:
@@ -292,8 +336,9 @@ Your code:
 Your answer:
 
 ~~~
-Please write your answer in full sentences.
+Scaling the variables before hierarchical clustering ensures that each variable has an equal impact on the clustering process. It prevents variables with larger scales from dominating the results.
 
+Variables should be scaled before computing dissimilarities because it helps to balance the influence of each variable in the clustering process. This leads to more accurate and meaningful clusters, especially when variables are measured in different units or have different scales.
 
 ~~~
 
@@ -306,8 +351,28 @@ Hint: There are a number of functions in R that you can use to generate data. On
 another option. Be sure to add a mean shift to the observationsin each class so that there are three distinct classes.
 Your code:
 ```{r,echo=TRUE}
-#
-#
+set.seed(123)
+
+n_per_class <- 20
+
+n_variables <- 50
+
+class_means <- list(
+  class1 = rep(0, n_variables),
+  class2 = rep(3, n_variables),
+  class3 = rep(-3, n_variables)
+)
+
+simulated_data <- NULL
+for (i in 1:length(class_means)) {
+  class_data <- matrix(rnorm(n_per_class * n_variables, mean = class_means[[i]], sd = 1), nrow = n_per_class)
+  simulated_data <- rbind(simulated_data, class_data)
+}
+
+simulated_df <- as.data.frame(simulated_data)
+
+head(simulated_df)
+
 ```
 
 Your answer:
@@ -325,8 +390,14 @@ continue to part (c) until the three classes show at least some separation in th
 
 Your code:
 ```{r,echo=TRUE}
-#
-#
+pca_result <- prcomp(simulated_data, center = TRUE)
+
+pc_scores <- as.data.frame(pca_result$x[, 1:2])
+
+plot(pc_scores, col = rep(c("red", "green", "blue"), each = n_per_class), pch = 19,
+     xlab = "PC1", ylab = "PC2", main = "PCA of Simulated Data")
+legend("bottomright", legend = c("Class 1", "Class 2", "Class 3"), col = c("red", "green", "blue"), pch = 19)
+
 ```
 
 Your answer:
@@ -344,8 +415,13 @@ how you interpret the results: K-means clustering will arbitrarily number the cl
 class labels and clustering labels are the same.
 Your code:
 ```{r,echo=TRUE}
-#
-#
+kmeans_result <- kmeans(simulated_data, centers = 3)
+
+comparison_table <- table(kmeans_result$cluster, rep(1:3, each = n_per_class))
+colnames(comparison_table) <- c("Class 1", "Class 2", "Class 3")
+rownames(comparison_table) <- c("Cluster 1", "Cluster 2", "Cluster 3")
+comparison_table
+
 ```
 
 Your answer:
@@ -360,8 +436,14 @@ Please write your answer in full sentences.
 (d) Perform K-means clustering with K = 2. Describe your results.
 Your code:
 ```{r,echo=TRUE}
-#
-#
+kmeans_result <- kmeans(simulated_data, centers = 2)
+
+print(kmeans_result$centers)
+
+plot(pc_scores, col = kmeans_result$cluster, pch = 19,
+     xlab = "PC1", ylab = "PC2", main = "K-means Clustering with K = 2")
+legend("bottomright", legend = c("Cluster 1", "Cluster 2"), col = 1:2, pch = 19)
+
 ```
 
 Your answer:
@@ -375,8 +457,14 @@ Please write your answer in full sentences.
 (e) Now perform K-means clustering with K = 4, and describe your results.
 Your code:
 ```{r,echo=TRUE}
-#
-#
+kmeans_result <- kmeans(simulated_data, centers = 4)
+
+print(kmeans_result$centers)
+
+plot(pc_scores, col = kmeans_result$cluster, pch = 19,
+     xlab = "PC1", ylab = "PC2", main = "K-means Clustering with K = 4")
+legend("bottomright", legend = 1:4, col = 1:4, pch = 19)
+
 ```
 
 Your answer:
@@ -396,8 +484,16 @@ score vector. Comment on the results.
 
 Your code:
 ```{r,echo=TRUE}
-#
-#
+pc_scores_2d <- pc_scores[, 1:2]
+
+kmeans_result_2d <- kmeans(pc_scores_2d, centers = 3)
+
+print(kmeans_result_2d$centers)
+
+plot(pc_scores_2d, col = kmeans_result_2d$cluster, pch = 19,
+     xlab = "PC1", ylab = "PC2", main = "K-means Clustering with K = 3 on PC Scores")
+legend("bottomright", legend = 1:3, col = 1:3, pch = 19)
+
 ```
 
 Your answer:
@@ -415,8 +511,16 @@ in (b)? Explain.
 
 Your code:
 ```{r,echo=TRUE}
-#
-#
+scaled_data <- scale(simulated_data)
+
+kmeans_result_scaled <- kmeans(scaled_data, centers = 3)
+
+print(kmeans_result_scaled$centers)
+
+plot(pc_scores_2d, col = kmeans_result_scaled$cluster, pch = 19,
+     xlab = "PC1", ylab = "PC2", main = "K-means Clustering with K = 3 on Scaled Data")
+legend("bottomright", legend = 1:3, col = 1:3, pch = 19)
+
 ```
 
 Your answer:
